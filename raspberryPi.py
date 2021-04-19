@@ -1,16 +1,19 @@
-# Lab 4: Program to continuously read A/D converter and log data
+# project for cs 326
+# written by Nathan Strain and Sam Mayfield
 import Adafruit_MCP3008
 import signal
 from datetime import datetime
 import RPi.GPIO as GPIO
 import subprocess
 import requests
+
 # Constants
 SAMPLE_TIME = 5
 A2D_CHANNEL = 0
 LED = 16
 IFTTT_LINK = #LEFT OUT
 IFTTT_KEY = #LEFT OUT
+
 # SPI pin assignments
 CLK = 25
 MISO = 24
@@ -23,10 +26,12 @@ place = 0
 LIGHT_MAX = (5)*(60/SAMPLE_TIME)
 WEB_LINK = #LEFTOUT 
 light_val = [False, 0, LIGHT_MAX]
+
 # Instantiate a new A/D object
 a2d = Adafruit_MCP3008.MCP3008(clk=CLK, cs=CS, miso=MISO, mosi=MOSI)
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(LED, GPIO.OUT)
+
 # timer signal callback
 def handler(signum, frame):
     try:
@@ -73,6 +78,7 @@ def checkLight():
     time = datetime.now().time()
 
     return value
+    
 def btCheck():
     returnList = [[],[]]
     for key in MacNames.keys():

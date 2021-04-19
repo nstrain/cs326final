@@ -65,28 +65,25 @@ def handler(signum, frame):
                 #if the timer runs out turn the light off and reset timer to 5 min
                 if timeOn == 0:
                     timeOn = LIGHT_SHUTOFF_TIME
-                    GPIO.output(LED, False)
-                    requests.get(IFTTT_LINK + "pi_off" + IFTTT_KEY)
-            #if 
-            if previousLightValue > MIN_LIGHT and currentLight < MIN_LIGHT:
-                GPIO.output(LED, True)
-                requests.get(IFTTT_LINK + "pi_on" + IFTTT_KEY)
+                    turnLight(False)
+            #if the light value was above the threshold turn the light on and start the timer
+            if previousLightValue > MIN_LIGHT:
+                turnLight(True)
                 timeOn -= 1
+            #if there have been any new devices found turn on the light and restart the timer
             if (len(lostFoundDevices["found"]) > 0):
-                GPIO.output(LED, True)
-                requests.get(IFTTT_LINK + "pi_on" + IFTTT_KEY)
-                timeOn -= 1
-
-
+                turnLight(True)
+                timeOn = LIGHT_SHUTOFF_TIME - 1
+        #if the light value is greater than MIN_Light
         else:
-            GPIO.output(LED, False)
-            requests.get(IFTTT_LINK + "pi_off" + IFTTT_KEY)
+            turnLight(False)
             timeOn = LIGHT_SHUTOFF_TIME
         previousLightValue = currentLight
         print("\tdone")
     except Exception as e:
         print(e)
 
+#function to check the light values
 def checkLight():
     ''' Timer signal handler
     '''
@@ -94,6 +91,15 @@ def checkLight():
     #time = datetime.now().time()
 
     return value
+
+#function to turn the led on/off and the smart outlet on/off
+def turnLight(onOff):
+    if onOff == True:
+        GPIO.output(LED, True)
+        requests.get(IFTTT_LINK + "pi_on" + IFTTT_KEY)
+    if onOff == False:
+        GPIO.output(LED, False)
+        requests.get(IFTTT_LINK + "pi_off" + IFTTT_KEY)
     
 #function to check for the bluetooth devices specified in MacNames
 def btCheck():
@@ -120,7 +126,8 @@ def btCheck():
     return lostFoundDevices
 
 
-# function to upload the status of the 
+# function to upload the status of the lights to the sql server
+#todo finish commenting
 def uploadStatus(lostFound):
     print("\t"+str(lostFound))
     for i in lostFound["lost"]:

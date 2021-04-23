@@ -126,17 +126,16 @@ def btCheck():
     return lostFoundDevices
 
 
-# function to upload the status of the lights to the sql server
-#todo finish commenting
+# function to upload the presence of devices to the sql server
 def uploadStatus(lostFound):
     print("\t"+str(lostFound))
-    for i in lostFound["lost"]:
-        print("\t\t"+i)
-        requests.put(WEB_LINK + i + "/0")
+    for device in lostFound["lost"]:
+        print("\t\t" + device)
+        requests.put(WEB_LINK + device + "/0") #update sql database to say device is present
     print("\tFound")
-    for i in lostFound["found"]:
-        print("\t\t"+i)
-        requests.put(WEB_LINK + i + "/1")
+    for device in lostFound["found"]:
+        print("\t\t" + device)
+        requests.put(WEB_LINK + device + "/1") #update sql database to say device is not present
 
 def syncSQL():
     data = requests.get(WEB_LINK).json()

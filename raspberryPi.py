@@ -6,16 +6,17 @@ from datetime import datetime
 import RPi.GPIO as GPIO
 import subprocess
 import requests
+import sys
+#imports personal info which needs to be created individually
+from personalInfo import *
 
 # Constants
 SAMPLE_TIME = 5 #seconds
 A2D_CHANNEL = 0
 LED = 16
 MIN_LIGHT = 75 # minimum light value to turn on
+MAX_LIGHT = 90 # value to turn light off at
 LIGHT_SHUTOFF_TIME = (5)*(60/SAMPLE_TIME)   #5 min
-WEB_LINK = #LEFTOUT 
-IFTTT_LINK = #LEFT OUT
-IFTTT_KEY = #LEFT OUT
 
 # SPI pin assignments
 CLK = 25
@@ -23,10 +24,18 @@ MISO = 24
 MOSI = 23
 CS = 18
 
+#this is a constant determined by command line arugment
+SQL_SYNC = False
+if __name__ == "__main__":
+    #if command line argument -sql-sync is passed, enable sql syncing
+    if("-sql-sync" in sys.argv):
+        SQL_SYNC = True
+        print("WARNING: You are sharing your room presence with the world")
+
+
+
 #other intialization
 
-MacNames = {"MACADDRESS": {"name": "george",  "present": False}} #george is the name to be displayed on the web page, 
-#and 0 is the presence of the device: 0 not present, 1 present
 place = 0
 light_val = [False, 0, LIGHT_SHUTOFF_TIME]
 previousLightValue = 0
@@ -58,24 +67,25 @@ def handler(signum, frame):
         elif(place == 0):
             syncSQL()
         
-        if currentLight < MIN_LIGHT:
+        if currentLight < MAX_LIGHT:
             #if the light timer timeOn is not full keep decrementing it
-            if(timeOn < LIGHT_SHUTOFF_TIME):
+            if timeOn < LIGHT_SHUTOFF_TIME:
                 timeOn -= 1
                 #if the timer runs out turn the light off and reset timer to 5 min
-                if timeOn == 0:
+                if timeOn <= 0:
                     timeOn = LIGHT_SHUTOFF_TIME
                     turnLight(False)
-            #if the light value was above the threshold turn the light on and start the timer
-            if previousLightValue > MIN_LIGHT:
+            #if the last light value was above the threshold and the current light 
+            #value is below it turn the light on and start the timer
+            elif previousLightValue >= MIN_LIGHT and currentLight < MIN_LIGHT:
                 turnLight(True)
                 timeOn -= 1
-            #if there have been any new devices found turn on the light and restart the timer
+            #if there have been any new devices found turn on the light and reset the timer
             if (len(lostFoundDevices["found"]) > 0):
                 turnLight(True)
                 timeOn = LIGHT_SHUTOFF_TIME - 1
-        #if the light value is greater than MIN_Light
-        else:
+        #if the current light is >= MAX_LIGHT and the led is on turn it off and reset the timer
+        elif currentLight >= MAX_LIGHT and GPIO.input(LED):
             turnLight(False)
             timeOn = LIGHT_SHUTOFF_TIME
         previousLightValue = currentLight
@@ -115,44 +125,53 @@ def btCheck():
         #if the name returned is really short therefore the device is no longer in range
         if( len(btName) <= len("b''")):
             #if the phone just recently disappeared 
-            if(MacNames[macAddress]["present"] == True):
+            if(MacNames[macAddress]["status"] == True):
                 lostFoundDevices["lost"].append(MacNames[macAddress]["name"])
-                MacNames[macAddress]["present"] = False
+                MacNames[macAddress]["status"] = False
                 continue
-        #else there must have been a response so update the presence to true if it was False
-        elif(MacNames[macAddress]["present"] == False): 
+        #else there must have been a response so update the presence to True if it was False
+        elif(MacNames[macAddress]["status"] == False): 
             lostFoundDevices["found"].append(MacNames[macAddress]["name"])
-            MacNames[macAddress]["present"] = True
+            MacNames[macAddress]["status"] = True
     return lostFoundDevices
 
 
 # function to upload the presence of devices to the sql server
 def uploadStatus(lostFound):
-    print("\t"+str(lostFound))
-    for device in lostFound["lost"]:
-        print("\t\t" + device)
-        requests.put(WEB_LINK + device + "/0") #update sql database to say device is present
-    print("\tFound")
-    for device in lostFound["found"]:
-        print("\t\t" + device)
-        requests.put(WEB_LINK + device + "/1") #update sql database to say device is not present
+    # only run if sql-syncing has been enabled
+    if SQL_SYNC:
+        print("\t"+str(lostFound))
+        for device in lostFound["lost"]:
+            print("\t\t" + device)
+            requests.put(WEB_LINK + device + "/0") #update sql database to say device is present
+        print("\tFound")
+        for device in lostFound["found"]:
+            print("\t\t" + device)
+            requests.put(WEB_LINK + device + "/1") #update sql database to say device is not present
 
+#function that makes sure all of the data in the sql server is updated
 def syncSQL():
-    data = requests.get(WEB_LINK).json()
-    for macAddress in MacNames.keys():
-        for i in data:
-            if(MacNames[macAddress]["name"] == i['name']):
-                if(MacNames[macAddress]["present"] != i['status']):
-                    requests.put(WEB_LINK + i + "/" + str(MacNames[macAddress]["present"]))
-                    continue
-
+    # only run if sql-syncing has been enabled
+    if SQL_SYNC:
+        data = requests.get(WEB_LINK).json()  # retrieves sql data
+        # checks that all of the data in the sql server is updated
+        for macAddress in MacNames.keys():
+            for i in data:
+                if(MacNames[macAddress]["name"] == i['name']):
+                    if(MacNames[macAddress]["status"] != i['status']):
+                        requests.put(WEB_LINK + i + "/" + str(MacNames[macAddress]["status"]))
+                        continue
+        
 # Setup interval timer signal every sample time
 signal.signal(signal.SIGALRM, handler)
 signal.setitimer(signal.ITIMER_REAL, 1, SAMPLE_TIME)
 
+
+
 print('Press Ctrl-C to quit...')
 try:
     while True:
+        #pauses the process until a signal is received
         signal.pause()
 except KeyboardInterrupt:
     signal.setitimer(signal.ITIMER_REAL, 0, 0) # Cancel inteval timer

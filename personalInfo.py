@@ -10,11 +10,11 @@ IFTTT_KEY = "IFTTT KEY LEFT OUT"
 MacNames = {
     "MACADDRESS1": {
         "name": "george",
-        "status": False
+        "status": 0
         },
     "MACADDRESS2": {
         "name": "phillip",
-        "status": False
+        "status": 0
         }
     } 
 #MACADDRESS is the bluetooth macaddress of your device

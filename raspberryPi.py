@@ -94,6 +94,7 @@ def handler(signum, frame):
         print("\tdone")
     except Exception as e:
         print(e)
+        print(sys.exec_info())
 
 #function to check the light values
 def checkLight():
@@ -127,14 +128,14 @@ def btCheck():
         #if the name returned is really short therefore the device is no longer in range
         if( len(btName) <= len("b''")):
             #if the phone just recently disappeared 
-            if(MacNames[macAddress]["status"] == True):
+            if(MacNames[macAddress]["status"] == 1):
                 lostFoundDevices["lost"].append(MacNames[macAddress]["name"])
-                MacNames[macAddress]["status"] = False
+                MacNames[macAddress]["status"] = 0
                 continue
         #else there must have been a response so update the presence to True if it was False
-        elif(MacNames[macAddress]["status"] == False): 
+        elif(MacNames[macAddress]["status"] == 0): 
             lostFoundDevices["found"].append(MacNames[macAddress]["name"])
-            MacNames[macAddress]["status"] = True
+            MacNames[macAddress]["status"] = 1
     return lostFoundDevices
 
 
@@ -144,12 +145,13 @@ def uploadStatus(lostFound):
     if SQL_SYNC:
         print("\t"+str(lostFound))
         for device in lostFound["lost"]:
-            print("\t\t" + device)
-            requests.put(WEB_LINK + device + "/0") #update sql database to say device is present
+            print("\t\t" + str(device))
+            #print ("\t" + WEB_LINK + str(device) + "/0")
+            requests.put(WEB_LINK + str(device) + "/0") #update sql database to say device is present
         print("\tFound")
         for device in lostFound["found"]:
-            print("\t\t" + device)
-            requests.put(WEB_LINK + device + "/1") #update sql database to say device is not present
+            print("\t\t" + str(device))
+            requests.put(WEB_LINK + str(device) + "/1") #update sql database to say device is not present
 
 #function that makes sure all of the data in the sql server is updated
 def syncSQL():
@@ -161,7 +163,8 @@ def syncSQL():
             for i in data:
                 if(MacNames[macAddress]["name"] == i['name']):
                     if(MacNames[macAddress]["status"] != i['status']):
-                        requests.put(WEB_LINK + i + "/" + str(MacNames[macAddress]["status"]))
+                        requests.put(WEB_LINK + i['name'] + "/" + str(MacNames[macAddress]["status"]))
+                        print(WEB_LINK + i['name'] + "/" + str(MacNames[macAddress]["status"]))
                         continue
         
 # Setup interval timer signal every sample time

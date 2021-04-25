@@ -51,6 +51,8 @@ GPIO.setup(LED, GPIO.OUT)
 def handler(signum, frame):
     try:
         global place
+        global timeOn
+        global previousLightValue
         lostFoundDevices = {
             "found": [],
             "lost": []

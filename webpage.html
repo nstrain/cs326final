@@ -1,0 +1,28 @@
+<div id="text"></div>
+<div> 
+ <script>
+    
+	 function data() {
+	  fetch('https://cs326-final-n.herokuapp.com/devices')
+		.then((response) => response.json())
+		.then((response) => 
+
+		{
+			document.getElementById("text").innerHTML = '';
+			console.log("running");
+			response.forEach(function (item, index) {
+				var this_item = document.createElement("p");
+				this_item.innerText = item.name;
+				if(item.status === 1) {
+				this_item.style.color = "green";
+				} else {
+				this_item.style.color = "red";
+			}
+			this_item.style.fontSize = 100;
+			document.getElementById("text").appendChild(this_item);
+			});
+		})
+	      .catch((error) => console.error(error));}
+	window.setInterval('data()', 1000);
+ </script>
+</div>

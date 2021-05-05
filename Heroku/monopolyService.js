@@ -26,12 +26,9 @@ const port = process.env.PORT || 3000;
 const router = express.Router();
 router.use(express.json());
 
-router.get("/", readHelloMessage);
+
 router.get("/devices", readDevices);
-router.get("/players/:id", readPlayer);
 router.put("/devices/:name/:status", updateDevice);
-router.post('/players', createPlayer);
-router.delete('/players/:id', deletePlayer);
 
 //app.use(router);
 //app.use(errorHandler);
@@ -62,9 +59,6 @@ function returnDataOr404(res, data) {
     }
 }
 
-function readHelloMessage(req, res) {
-    res.send('Hello, CS 262 Monopoly service!');
-}
 
 function readDevices(req, res, next) {
     db.many("SELECT name, status FROM Devices")
@@ -76,40 +70,10 @@ function readDevices(req, res, next) {
         })
 }
 
-function readPlayer(req, res, next) {
-    db.oneOrNone(`SELECT * FROM Player WHERE id=${req.params.id}`)
-        .then(data => {
-            returnDataOr404(res, data);
-        })
-        .catch(err => {
-            next(err);
-            console.log(err);
-        });
-}
 
 function updateDevice(req, res, next) {
     console.log(`UPDATE Devices SET status=${req.params.status} WHERE name='${req.params.name}' RETURNING mac`);
     db.oneOrNone(`UPDATE Devices SET status=${req.params.status} WHERE name='${req.params.name}' RETURNING mac`, req.body)
-        .then(data => {
-            returnDataOr404(res, data);
-        })
-        .catch(err => {
-            next(err);
-        });
-}
-
-function createPlayer(req, res, next) {
-    db.one(`INSERT INTO Player(email, name) VALUES ($(email), $(name)) RETURNING id`, req.body)
-        .then(data => {
-            res.send(data);
-        })
-        .catch(err => {
-            next(err);
-        });
-}
-
-function deletePlayer(req, res, next) {
-    db.oneOrNone(`DELETE FROM Player WHERE id=${req.params.id} RETURNING id`)
         .then(data => {
             returnDataOr404(res, data);
         })
